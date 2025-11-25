@@ -294,9 +294,8 @@ def create_exif_data(subject_area=None, image_analysis=None):
         image_analysis: Dictionary with analyzed image properties
     """
 
-    # Generate random datetime from last 7 days
     now = datetime.now()
-    random_days = random.uniform(0, 7)
+    random_days = random.uniform(0, 3)
     random_dt = now - timedelta(days=random_days)
     datetime_str = random_dt.strftime("%Y:%m:%d %H:%M:%S").encode()
 
@@ -463,16 +462,26 @@ def modify_image_exif(input_path, output_path=None):
     return True
 
 
-def modify_image_exif_folder(input_folder):
+def modify_image_exif_folder(input_folder, output_folder):
+    if not output_folder:
+        output_folder = input_folder
+
     for filename in os.listdir(input_folder):
         _, file_extension = os.path.splitext(filename)
         if file_extension.lower() in (".jpg", ".jpeg", ".png"):
             input_path = os.path.join(input_folder, filename)
-            modify_image_exif(input_path)
+            output_path = os.path.join(output_folder, filename)
+            modify_image_exif(input_path, output_path)
 
 
 if __name__ == "__main__":
     input_path = "/Users/ashegaonkar/Downloads"
 
-    modify_image_exif_folder(input_path)
-    # modify_image_exif(input_path)
+    if os.path.isdir(input_path):
+        print(f"Modifying images in folder: {input_path}")
+        output_path = os.path.join(input_path, "exif_output")
+        os.makedirs(output_path, exist_ok=True)
+        modify_image_exif_folder(input_path, output_path)
+    else:
+        print(f"Modifying image: {input_path}")
+        modify_image_exif(input_path)
