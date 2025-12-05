@@ -1,5 +1,6 @@
-import httpx
 import time
+
+import httpx
 
 
 def fetch_page_source(url: str, timeout: int = 30, max_retries: int = 3) -> str:

@@ -1,11 +1,14 @@
-import httpx
 import json
-import re
-import pandas as pd
-import time
-from typing import Optional
 import os
-from .common import fetch_page_source
+import re
+import time
+from datetime import datetime, UTC
+from typing import Optional
+
+import httpx
+import pandas as pd
+
+from common import fetch_page_source
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -57,7 +60,7 @@ def extract_details(page_source: str) -> Optional[dict]:
                     if info_runs:
                         comments_count = info_runs[0].get("text", "0")
                     break
-        except Exception as e:
+        except Exception:
             # If parsing fails, keep default value
             pass
 
@@ -127,9 +130,16 @@ def extract_details(page_source: str) -> Optional[dict]:
 
 
 def main():
+    start_ts = datetime.now(UTC).isoformat()
+    print(f"Starting at {start_ts}")
+
     # Read URLs from CSV file
     try:
-        urls_df = pd.read_csv("urls.csv")
+        search_results_file = os.path.join(
+            BASE_DIR, "input", "search_results.csv"
+        )
+        print(f"Reading search results from {search_results_file}")
+        urls_df = pd.read_csv(search_results_file)
         if "url" not in urls_df.columns:
             raise ValueError("CSV file must contain a 'url' column")
         urls = urls_df["url"].tolist()
@@ -187,11 +197,11 @@ def main():
                 results.append(details)
                 print(f"  ✓ Extracted: {details['title'][:50]}...")
             else:
-                print(f"  ✗ Failed to extract details")
+                print("  ✗ Failed to extract details")
                 failed_urls.append({"url": url, "error": "Extraction failed"})
 
         except httpx.TimeoutException:
-            print(f"  ✗ Timeout error - skipping")
+            print("  ✗ Timeout error - skipping")
             failed_urls.append({"url": url, "error": "Timeout"})
         except httpx.HTTPStatusError as e:
             print(f"  ✗ HTTP {e.response.status_code} error - skipping")
@@ -210,8 +220,14 @@ def main():
                 if all(col in temp_df.columns for col in column_order)
                 else temp_df
             )
-            temp_df.to_csv("youtube_shorts_progress.csv", index=False)
-            print(f"  💾 Progress saved ({len(results)} videos)")
+            output_file = os.path.join(
+                BASE_DIR, "output", f"yt_videos_progress-{start_ts}.csv"
+            )
+            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+            temp_df.to_csv(output_file, index=False)
+            print(
+                f"  💾 Progress saved ({len(results)} videos to {output_file})"
+            )
 
         # Small delay to avoid rate limiting
         if idx < len(urls):
@@ -221,19 +237,27 @@ def main():
     if results:
         df = pd.DataFrame(results)
         df = df[column_order]
-        df.to_csv("youtube_shorts.csv", index=False)
-        print(f"\n✅ Successfully saved {len(df)} videos to youtube_shorts.csv")
+        output_file = os.path.join(
+            BASE_DIR, "output", f"yt_videos-{start_ts}.csv"
+        )
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        df.to_csv(output_file, index=False)
+        print(f"\n✅ Successfully saved {len(df)} videos to {output_file}")
     else:
         print("\n⚠ No videos were successfully extracted")
 
     # Save failed URLs for retry
     if failed_urls:
         failed_df = pd.DataFrame(failed_urls)
-        failed_df.to_csv("failed_urls.csv", index=False)
-        print(f"⚠ {len(failed_urls)} URLs failed - saved to failed_urls.csv")
+        output_file = os.path.join(
+            BASE_DIR, "output", f"failed_urls-{start_ts}.csv"
+        )
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        failed_df.to_csv(output_file, index=False)
+        print(f"⚠ {len(failed_urls)} URLs failed - saved to {output_file}")
 
     # Summary
-    print(f"\n📊 Summary:")
+    print("\n📊 Summary:")
     print(f"   Total URLs: {len(urls)}")
     print(f"   Successful: {len(results)}")
     print(f"   Failed: {len(failed_urls)}")
