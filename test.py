@@ -20,7 +20,9 @@ def main():
     )
 
     formatted_prompt = chat_template.format_messages(
-        ai_name="Gemini", user_name="Alice", user_query="What's the weather like today?"
+        ai_name="Gemini",
+        user_name="Alice",
+        user_query="What's the weather like today?",
     )
 
     response = model.invoke(formatted_prompt)

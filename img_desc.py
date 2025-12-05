@@ -143,20 +143,8 @@ def main():
     )
 
     dataset_dir = os.path.join(BASE_DIR, "data")
-    dataset_dir = "/Users/ashegaonkar/Downloads"
     caption_image_dataset(model, dataset_dir)
 
 
-def main2():
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY")
-    )
-
-    image_path = "/Users/ashegaonkar/Downloads/dream_myra.jpg"
-    caption = caption_img(model, image_path)
-    print(caption)
-
-
 if __name__ == "__main__":
-    # main()
-    main2()
+    main()

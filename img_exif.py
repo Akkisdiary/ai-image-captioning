@@ -6,12 +6,12 @@ Supports JPEG, PNG, and other PIL-compatible formats.
 
 import piexif
 from PIL import Image
-import sys
 import os
 from datetime import datetime, timedelta
 import random
 import cv2
 import numpy as np
+import argparse
 
 
 def analyze_image(img):
@@ -71,7 +71,9 @@ def analyze_image(img):
 
     # Detect potential flash usage
     # Flash typically creates bright center with darker edges
-    center_region = gray[height // 3 : 2 * height // 3, width // 3 : 2 * width // 3]
+    center_region = gray[
+        height // 3 : 2 * height // 3, width // 3 : 2 * width // 3
+    ]
     edge_brightness = np.mean(
         [
             np.mean(gray[0 : height // 4, :]),
@@ -136,7 +138,14 @@ def estimate_camera_settings(image_analysis):
     elif brightness < 0:  # Dark
         shutter_options = [(1, 15), (1, 20), (1, 30), (1, 40), (1, 60)]
     elif brightness < 3:  # Normal
-        shutter_options = [(1, 60), (1, 80), (1, 100), (1, 125), (1, 160), (1, 200)]
+        shutter_options = [
+            (1, 60),
+            (1, 80),
+            (1, 100),
+            (1, 125),
+            (1, 160),
+            (1, 200),
+        ]
     else:  # Bright
         shutter_options = [
             (1, 250),
@@ -241,7 +250,9 @@ def detect_subject_area(img):
         x, y, w, h = largest_face
         center_x = x + w // 2
         center_y = y + h // 2
-        print(f"  Detected face at center ({center_x}, {center_y}) with size {w}x{h}")
+        print(
+            f"  Detected face at center ({center_x}, {center_y}) with size {w}x{h}"
+        )
         return (center_x, center_y, w, h)
 
     # If no face, try saliency detection
@@ -252,7 +263,10 @@ def detect_subject_area(img):
         if success:
             # Threshold the saliency map
             _, thresh_map = cv2.threshold(
-                (saliency_map * 255).astype(np.uint8), 127, 255, cv2.THRESH_BINARY
+                (saliency_map * 255).astype(np.uint8),
+                127,
+                255,
+                cv2.THRESH_BINARY,
             )
 
             # Find contours
@@ -333,7 +347,9 @@ def create_exif_data(subject_area=None, image_analysis=None):
         piexif.ExifIFD.ShutterSpeedValue: camera_settings["shutter_speed"],
         piexif.ExifIFD.ApertureValue: camera_settings["aperture"],
         piexif.ExifIFD.BrightnessValue: brightness_rational,
-        piexif.ExifIFD.ExposureBiasValue: camera_settings["exposure_compensation"],
+        piexif.ExifIFD.ExposureBiasValue: camera_settings[
+            "exposure_compensation"
+        ],
         piexif.ExifIFD.MeteringMode: camera_settings["metering_mode"],
         piexif.ExifIFD.Flash: (
             1 if image_analysis["has_flash"] else 16
@@ -349,7 +365,9 @@ def create_exif_data(subject_area=None, image_analysis=None):
         piexif.ExifIFD.SceneType: b"\x01",  # Directly photographed
         piexif.ExifIFD.ExposureMode: 0,  # Auto
         piexif.ExifIFD.WhiteBalance: 0,  # Auto
-        piexif.ExifIFD.FocalLengthIn35mmFilm: camera_settings["focal_length_35mm"],
+        piexif.ExifIFD.FocalLengthIn35mmFilm: camera_settings[
+            "focal_length_35mm"
+        ],
         piexif.ExifIFD.LensSpecification: camera_settings["lens_spec"],
         piexif.ExifIFD.LensMake: b"Apple",
         piexif.ExifIFD.LensModel: camera_settings["lens_model"],
@@ -380,7 +398,7 @@ def create_exif_data(subject_area=None, image_analysis=None):
 def generate_iphone_filename(directory):
     """
     Generate an iPhone-style filename (IMG_XXXX.JPG) that doesn't exist in the directory.
-    
+
     Args:
         directory: Directory where the file will be saved
     """
@@ -388,13 +406,13 @@ def generate_iphone_filename(directory):
     existing_numbers = set()
     if os.path.exists(directory):
         for filename in os.listdir(directory):
-            if filename.startswith('IMG_') and filename.endswith('.JPG'):
+            if filename.startswith("IMG_") and filename.endswith(".JPG"):
                 try:
                     num = int(filename[4:8])
                     existing_numbers.add(num)
                 except ValueError:
                     continue
-    
+
     # Generate a random 4-digit number that doesn't exist
     while True:
         img_number = random.randint(1000, 9999)
@@ -446,7 +464,9 @@ def modify_image_exif(input_path, output_path=None):
         if img.mode == "P":
             img = img.convert("RGBA")
         if "A" in img.mode:
-            background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
+            background.paste(
+                img, mask=img.split()[-1]
+            )  # Use alpha channel as mask
         else:
             background.paste(img)
         img = background
@@ -470,12 +490,19 @@ def modify_image_exif_folder(input_folder, output_folder):
         _, file_extension = os.path.splitext(filename)
         if file_extension.lower() in (".jpg", ".jpeg", ".png"):
             input_path = os.path.join(input_folder, filename)
-            output_path = os.path.join(output_folder, filename)
+            output_file_name = generate_iphone_filename(output_folder)
+            output_path = os.path.join(output_folder, output_file_name)
             modify_image_exif(input_path, output_path)
 
 
 if __name__ == "__main__":
-    input_path = "/Users/ashegaonkar/Downloads"
+    parser = argparse.ArgumentParser(
+        description="Modify EXIF metadata of images"
+    )
+    parser.add_argument("input_path", help="Path to image file or folder")
+    args = parser.parse_args()
+
+    input_path = args.input_path
 
     if os.path.isdir(input_path):
         print(f"Modifying images in folder: {input_path}")

@@ -38,6 +38,6 @@ def convert_webp_to_png_bulk(input_folder, output_folder):
 
 
 if __name__ == "__main__":
-    input_webp_file = "/Users/ashegaonkar/passionsfruit/ai-characters/umanorth"
+    input_webp_file = "testing"
 
     convert_webp_to_png_bulk(input_webp_file, input_webp_file)
