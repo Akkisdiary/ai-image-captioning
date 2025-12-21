@@ -395,29 +395,33 @@ def create_exif_data(subject_area=None, image_analysis=None):
     return exif_dict
 
 
-def generate_iphone_filename(directory):
+def generate_iphone_filename(directory, counter, prefix=None):
     """
-    Generate an iPhone-style filename (IMG_XXXX.JPG) that doesn't exist in the directory.
+    Generate an iPhone-style filename (IMG_XXYY.JPG) where XX is random (fixed per batch) 
+    and YY is sequential.
 
     Args:
         directory: Directory where the file will be saved
+        counter: Sequential counter for the last 2 digits (00-99)
+        prefix: Fixed 2-digit prefix (if None, generates a random one)
+    
+    Returns:
+        tuple: (filename, next_counter, prefix)
     """
-    # Find existing IMG_XXXX.JPG files to avoid conflicts
-    existing_numbers = set()
-    if os.path.exists(directory):
-        for filename in os.listdir(directory):
-            if filename.startswith("IMG_") and filename.endswith(".JPG"):
-                try:
-                    num = int(filename[4:8])
-                    existing_numbers.add(num)
-                except ValueError:
-                    continue
-
-    # Generate a random 4-digit number that doesn't exist
-    while True:
-        img_number = random.randint(1000, 9999)
-        if img_number not in existing_numbers:
-            return f"IMG_{img_number}.JPG"
+    # Generate random prefix if not provided (first batch only)
+    if prefix is None:
+        prefix = random.randint(10, 99)
+    
+    # Increment counter for sequential numbering
+    next_counter = counter + 1
+    
+    # Handle counter overflow (reset to 0 after 99)
+    if next_counter > 99:
+        next_counter = 0
+    
+    # Format: IMG_XXYY.JPG where XX is prefix, YY is counter
+    img_number = prefix * 100 + next_counter
+    return f"IMG_{img_number:04d}.JPG", next_counter, prefix
 
 
 def modify_image_exif(input_path, output_path=None):
@@ -486,11 +490,15 @@ def modify_image_exif_folder(input_folder, output_folder):
     if not output_folder:
         output_folder = input_folder
 
+    # Start counter at 0, prefix will be randomly generated on first call
+    counter = 0
+    prefix = None
+    
     for filename in os.listdir(input_folder):
         _, file_extension = os.path.splitext(filename)
         if file_extension.lower() in (".jpg", ".jpeg", ".png"):
             input_path = os.path.join(input_folder, filename)
-            output_file_name = generate_iphone_filename(output_folder)
+            output_file_name, counter, prefix = generate_iphone_filename(output_folder, counter, prefix)
             output_path = os.path.join(output_folder, output_file_name)
             modify_image_exif(input_path, output_path)
 

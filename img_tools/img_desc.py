@@ -3,6 +3,7 @@ import io
 import os
 import base64
 import time
+import argparse
 
 from dotenv import load_dotenv
 from PIL import Image
@@ -16,50 +17,38 @@ def _set_env(var: str):
         os.environ[var] = getpass.getpass(f"{var}: ")
 
 
-_set_env("GOOGLE_API_KEY")
-
-
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-PROMPT_2 = """
-You are an expert at creating complete image generation prompts for Seedream 4.0 AI model.
+PROMPT = """
+Act as an expert image captioner for AI training. Describe the attached image of the woman, whom we will call ohmyra, in a single, highly detailed paragraph.
 
-IMPORTANT CONTEXT:
-- Seedream will receive 2 reference images in this order:
-  1. Images 1: Face structure, body type and physique references
-  2. Image 2: THIS image - complete scene reference
-- You are analyzing image 2 ONLY
-- Your output must be a COMPLETE prompt for Seedream
+Instructions:
 
-YOUR TASK:
-Analyze this image and create a complete Seedream prompt that instructs the AI how to use all references and describes everything visible in THIS image.
+Start with the Trigger: Begin the description with the word ohmyra.
 
-OUTPUT FORMAT (mandatory structure):
+Exclude Facial Features: Do not describe her eye color, nose shape, lip shape, or specific facial structure. These are the permanent traits we want to bake into the trigger word.
 
-"Use the first reference image for the face structure, body type and physique. Use reference image 2 as the complete reference for clothing, pose, action, scene composition, background environment, lighting setup, and overall atmosphere.
+Describe Hair as a Variable: Since her hair changes, you must describe her hairstyle, color, and length in this specific image (e.g., 'long wavy hair let down,' 'hair tied in a messy bun,' or 'straight hair tucked behind ears').
 
-Subject details: [Describe the person's clothing in complete detail - every garment, accessories, jewelry, shoes, specific details like patterns, textures, colors, cuts, styles]. [Describe the exact pose - standing, sitting, body position, arm placement, leg position]. [Describe what the person is doing - their action, gesture, body language, facial expression like smiling/serious but WITHOUT describing facial features].
+Shot & Composition: State the shot type (close-up, medium shot, or full-body) and the camera perspective.
 
-The scene: [describe location type and setting]. The environment features [describe architectural elements, furniture, props, and background in detail]. The setting is [indoor/outdoor details with spatial relationships].
+Clothing & Accessories: Detail the outfit, including fabrics, colors, and any jewelry.
 
-Lighting: [describe light source, direction, quality, shadows, time of day, color temperature in technical detail].
+Pose & Expression: Describe her body orientation and her facial expression (e.g., 'smiling,' 'pouty,' 'serious,' 'laughing').
 
-Camera: [describe angle, perspective, depth of field, focal distance, composition].
+Environment & Lighting: Detail the background, lighting quality (e.g., 'golden hour,' 'harsh flash,' 'dim interior'), and color palette.
 
-Atmosphere: [describe mood, ambiance, weather if applicable, environmental effects].
+Technical Quality: Note the depth of field and focus (e.g., 'blurred background,' 'sharp focus throughout').
 
-Colors and textures: [describe dominant colors throughout the scene, materials, surface properties, color palette].
+Constraints:
 
-Technical quality: [high-resolution, sharp focus, professional photography, etc.]."
+DO NOT use the words 'woman' or 'girl'; use the trigger word ohmyra.
 
-CRITICAL RULES:
-- DO describe: clothing (every detail), pose, action, body language, gesture, expression type (smile/serious)
-- NEVER describe: hair color, hair style, eye color, facial features, skin tone, ethnic features
-- Use "this person", "the subject" when referring to the individual
-- Be extremely detailed about clothing and accessories
-- Be precise about pose and body position
-- Focus on EVERYTHING visible except facial/hair features
+DO NOT use flowery language. Be literal and objective.
 
-Output ONLY the formatted prompt, nothing else.
+START the response directly with 'ohmyra'."
+
+Example Output for your Script:
+"ohmyra, a medium shot from a side angle, wearing a blue denim jacket over a white t-shirt. Her hair is tied back in a sleek ponytail. She is looking off-camera with a contemplative expression. The setting is a sun-drenched urban park with blurred trees and a park bench in the background. The lighting is warm and natural with soft shadows on her shoulder.
 """
 
 
@@ -79,26 +68,12 @@ def get_base64_image(image_path):
 
 
 def caption_img(model, image_path):
-    prompt = """
-    Describe this image in great detail in the following section for
-    character LORA training.
-
-    1. Subject, pose, facial expressions
-    2. Background
-    3. Camera angle & details
-    4. Lighting
-
-    Provide a single cohesive paragraph for each section separately.
-    The output should not contain any titles, headers, filler text,
-    or surrounding text.
-    """
-    print(f"captioning image: {image_path}")
     img = get_base64_image(image_path)
     image_url = f"data:image/png;base64,{img}"
 
     message = HumanMessage(
         content=[
-            {"type": "text", "text": prompt},
+            {"type": "text", "text": PROMPT},
             {"type": "image_url", "image_url": {"url": image_url}},
         ]
     )
@@ -114,12 +89,20 @@ def caption_image_dataset(model, image_dir):
         name, ext = os.path.splitext(image)
         ext = ext.lower()
 
-        if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
-            print(f"Skipping {image}")
-            continue
-
         image_path = os.path.join(image_dir, image)
         caption_path = os.path.join(image_dir, name + ".txt")
+
+        if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
+            print(f"Skipping {image} (unsupported format)")
+            continue
+
+        if os.path.exists(caption_path):
+            try:
+                if os.path.getsize(caption_path) > 0:
+                    print(f"Skipping {image_path} (caption exists)")
+                    continue
+            except OSError:
+                pass
 
         print("Captioning image: ", image_path)
         start = time.perf_counter()
@@ -137,13 +120,53 @@ def caption_image_dataset(model, image_dir):
             f.write(caption)
 
 
+def caption_single_image(model, image_path):
+    if not os.path.exists(image_path):
+        raise ValueError(f"Image path {image_path} does not exist")
+
+    if not os.path.isfile(image_path):
+        raise ValueError(f"Image path {image_path} is not a file")
+
+    name, ext = os.path.splitext(os.path.basename(image_path))
+    ext = ext.lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
+        raise ValueError(f"Unsupported image extension: {ext}")
+
+    caption_path = os.path.join(os.path.dirname(image_path), name + ".txt")
+    if os.path.exists(caption_path):
+        try:
+            if os.path.getsize(caption_path) > 0:
+                print(f"Skipping {image_path} (caption exists)")
+                return
+        except OSError:
+            pass
+
+    print("Captioning image: ", image_path)
+    start = time.perf_counter()
+    try:
+        caption = caption_img(model, image_path)
+    finally:
+        print("Time taken: ", time.perf_counter() - start)
+
+    print("Writing caption to file: ", caption_path)
+    with open(caption_path, "w") as f:
+        f.write(caption)
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path")
+    args = parser.parse_args()
+
+    _set_env("GOOGLE_API_KEY")
     model = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY")
     )
 
-    dataset_dir = os.path.join(BASE_DIR, "data")
-    caption_image_dataset(model, dataset_dir)
+    if os.path.isdir(args.path):
+        caption_image_dataset(model, args.path)
+    else:
+        caption_single_image(model, args.path)
 
 
 if __name__ == "__main__":
