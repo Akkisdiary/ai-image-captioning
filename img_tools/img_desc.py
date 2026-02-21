@@ -18,8 +18,8 @@ def _set_env(var: str):
 
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-PROMPT = """
-Act as an expert image captioner for AI training. Describe the attached image of the woman, whom we will call ohmyra, in a single, highly detailed paragraph.
+PROMPT_LORA = """
+Act as an expert image captioner for AI training. Describe the attached image of the woman in detail, whom we will call ohmyra, in a single, highly detailed paragraph.
 
 Instructions:
 
@@ -51,6 +51,45 @@ Example Output for your Script:
 "ohmyra, a medium shot from a side angle, wearing a blue denim jacket over a white t-shirt. Her hair is tied back in a sleek ponytail. She is looking off-camera with a contemplative expression. The setting is a sun-drenched urban park with blurred trees and a park bench in the background. The lighting is warm and natural with soft shadows on her shoulder.
 """
 
+PROMPT_AMATEUR_EDIT = """
+# SYSTEM PROMPT: VISION-TO-EDITING PROMPT GENERATOR (VERSION 2.0)
+
+## ROLE
+You are an expert Image Analyst and Prompt Engineer. Your task is to analyze an input Image (A) and generate a highly detailed "Image Editing Prompt." This generated prompt will be used to transplant a new subject (Image B) into the specific scene, lighting, and composition found in Image (A).
+
+## CORE OBJECTIVE
+Generate a descriptive prompt that achieves "Absolute Realism." The output must describe a high-quality, intimate, amateur smartphone-style photograph (Instagram/Pinterest aesthetic). Focus on raw, unpolished, and life-like details while strictly avoiding "cinematic" or "professional studio" descriptors.
+
+## MANDATORY PROMPT ELEMENTS
+Every prompt you generate must integrate these four pillars:
+
+### 1. Subject Identity & Preservation
+- **Identity Guard:** Explicitly state: "Preserve the provided subject's exact face, natural likeness, unique facial structure, and identity perfectly."
+- **Natural Texture:** Demand "visible skin pores, fine lines, tiny blemishes, peach fuzz, and realistic hydration shine." Forbid "AI-smoothing" or "beautification."
+
+### 2. Pose, Clothing & Accessories (The "Look")
+- **Pose & Eye Contact:** Describe the subject's body orientation (e.g., "turned 45 degrees," "slumped casually"), head tilt, and where they are looking (e.g., "direct, relaxed gaze into the lens").
+- **Wardrobe Detail:** Describe the clothing materials and fit (e.g., "ribbed cotton tank top," "oversized knit sweater with pilling," "wrinkled linen shirt").
+- **Accessories:** Note any jewelry, glasses, or hair accessories (e.g., "thin gold hoop earrings," "a messy claw clip with stray hairs," "smudged wire-rimmed glasses").
+
+### 3. Amateur Smartphone Aesthetic
+- **Camera Style:** Use keywords: "Captured on a smartphone," "Amateur lifestyle photography," "Candid snapshot," "Instagram-style POV," "Natural sensor grain."
+- **Lighting:** Describe lighting as "mixed artificial glow," "harsh overhead light," or "natural side-window light." Forbid "softboxes" or "rim lighting."
+- **Focus:** Ensure a natural, deep focus rather than artificial professional bokeh. The background should be clear and realistic, not a "dreamy" blur.
+
+### 4. Environmental Context & Composition
+- **Background Details:** Describe the background in detail (e.g., "cluttered wooden table," "busy open kitchen," "fluorescent-lit grocery aisle").
+- **Compositional Balance:** Mention specific props (e.g., "condensation on a glass," "half-eaten plate," "stray napkins") and their position relative to the subject.
+
+## STYLISTIC NEVERS (NEGATIVE CONSTRAINTS)
+- **DO NOT use:** "Cinematic," "Dramatic lighting," "8k," "Masterpiece," "Blurry background," "Shallow depth of field," "Professional portrait," "Studio-lit."
+- **Avoid:** Any language implying a high-end DSLR or a professional photographer's intervention.
+
+## OUTPUT FORMAT
+Provide the final prompt string, starting with the instruction: 
+"Using the reference image of the subject, create a..."
+"""
+
 
 def get_image_bytes(image_path):
     # image_format = image_path.split(".")[-1].lower()
@@ -73,7 +112,7 @@ def caption_img(model, image_path):
 
     message = HumanMessage(
         content=[
-            {"type": "text", "text": PROMPT},
+            {"type": "text", "text": PROMPT_AMATEUR_EDIT},
             {"type": "image_url", "image_url": {"url": image_url}},
         ]
     )
@@ -104,7 +143,7 @@ def caption_image_dataset(model, image_dir):
             except OSError:
                 pass
 
-        print("Captioning image: ", image_path)
+        print("Captioning image:", image_path)
         start = time.perf_counter()
 
         try:
