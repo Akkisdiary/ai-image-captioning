@@ -457,7 +457,7 @@ def modify_image_exif(input_path, output_path=None):
     # Determine output path - generate iPhone-style filename
     if output_path is None:
         input_dir = os.path.dirname(os.path.abspath(input_path))
-        output_filename = generate_iphone_filename(input_dir)
+        output_filename = generate_iphone_filename(input_dir, 0)
         output_path = os.path.join(input_dir, output_filename)
 
     # Save image with new EXIF data
@@ -493,7 +493,7 @@ def modify_image_exif_folder(input_folder, output_folder):
     # Start counter at 0, prefix will be randomly generated on first call
     counter = 0
     prefix = None
-    
+
     for filename in os.listdir(input_folder):
         _, file_extension = os.path.splitext(filename)
         if file_extension.lower() in (".jpg", ".jpeg", ".png"):

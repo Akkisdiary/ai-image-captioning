@@ -19,36 +19,37 @@ def _set_env(var: str):
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 PROMPT_LORA = """
-Act as an expert image captioner for AI training. Describe the attached image of the woman in detail, whom we will call ohmyra, in a single, highly detailed paragraph.
+# Role
+Act as an expert Image Captioner and Vision Analyst. Your goal is to provide a dense, literal, and technical description of the attached image for AI model training (LoRA).
 
-Instructions:
+# Task
+Analyze the image and describe the subject, "{trigger_word}," with extreme precision. 
 
-Start with the Trigger: Begin the description with the word ohmyra.
+# Formatting Rules
+1. **The Trigger:** The very first word of your entire response must be "{trigger_word}".
+2. **Subject Identity:** Use the name "{trigger_word}" exclusively. Never use "woman," "girl," or "model."
+3. **The "No-Face" Rule:** Do NOT describe her eyes (color/shape), nose, or lips. These are permanent traits of "{trigger_word}." 
+4. **Detailed Hair (Variable):** Since hair changes, describe the color, length, texture (frizzy, silky, wavy), and specific styling (tucked, parted, tied).
+5. **Makeup & Skin (Variable):** Detail the makeup style (matte, dewy, winged eyeliner, bold red lipstick, natural) and skin texture (freckles, tanned, pale, oily, matte).
+6. **Anatomical Pose:** Describe the exact orientation of her body. Mention the tilt of the head, the position of the shoulders, and where her hands/arms are placed (e.g., "head tilted 15 degrees left, right hand resting on chin, shoulders slumped").
 
-Exclude Facial Features: Do not describe her eye color, nose shape, lip shape, or specific facial structure. These are the permanent traits we want to bake into the trigger word.
+# Technical Hierarchy (The Order of Description)
+* **Trigger:** {trigger_word}
+* **Shot & Perspective:** (e.g., "Extreme close-up, low-angle shot, side profile")
+* **Expression:** (e.g., "Neutral, smiling, mouth slightly agape, squinting")
+* **Pose:** (Specific body and limb positioning)
+* **Makeup:** (Specific products, colors, and skin finish)
+* **Hair:** (Color, style, and flow)
+* **Clothing/Accessories:** (Fabrics like silk, denim, or lace; jewelry; eyewear)
+* **Environment:** (Background elements, depth of field, location)
+* **Lighting/Color:** (Color temperature, light source direction, shadows)
 
-Describe Hair as a Variable: Since her hair changes, you must describe her hairstyle, color, and length in this specific image (e.g., 'long wavy hair let down,' 'hair tied in a messy bun,' or 'straight hair tucked behind ears').
+# Constraints
+* Use **Literal Language:** Avoid "beautiful," "stunning," or "graceful." Use "symmetrical," "vibrant," or "upright."
+* **No Introduction:** Do not say "Here is the description..." or "This image shows..." 
+* **Single Paragraph:** Deliver the entire description in one continuous, dense paragraph.
 
-Shot & Composition: State the shot type (close-up, medium shot, or full-body) and the camera perspective.
-
-Clothing & Accessories: Detail the outfit, including fabrics, colors, and any jewelry.
-
-Pose & Expression: Describe her body orientation and her facial expression (e.g., 'smiling,' 'pouty,' 'serious,' 'laughing').
-
-Environment & Lighting: Detail the background, lighting quality (e.g., 'golden hour,' 'harsh flash,' 'dim interior'), and color palette.
-
-Technical Quality: Note the depth of field and focus (e.g., 'blurred background,' 'sharp focus throughout').
-
-Constraints:
-
-DO NOT use the words 'woman' or 'girl'; use the trigger word ohmyra.
-
-DO NOT use flowery language. Be literal and objective.
-
-START the response directly with 'ohmyra'."
-
-Example Output for your Script:
-"ohmyra, a medium shot from a side angle, wearing a blue denim jacket over a white t-shirt. Her hair is tied back in a sleek ponytail. She is looking off-camera with a contemplative expression. The setting is a sun-drenched urban park with blurred trees and a park bench in the background. The lighting is warm and natural with soft shadows on her shoulder.
+# Start your response with "{trigger_word}"
 """
 
 PROMPT_AMATEUR_EDIT = """
@@ -69,6 +70,7 @@ Every prompt you generate must integrate these four pillars:
 
 ### 2. Pose, Clothing & Accessories (The "Look")
 - **Pose & Eye Contact:** Describe the subject's body orientation (e.g., "turned 45 degrees," "slumped casually"), head tilt, and where they are looking (e.g., "direct, relaxed gaze into the lens").
+- **Hair style:** Describe the subject's hair (e.g., "long wavy hair let down," "hair tied in a messy bun," or "straight hair tucked behind ears").
 - **Wardrobe Detail:** Describe the clothing materials and fit (e.g., "ribbed cotton tank top," "oversized knit sweater with pilling," "wrinkled linen shirt").
 - **Accessories:** Note any jewelry, glasses, or hair accessories (e.g., "thin gold hoop earrings," "a messy claw clip with stray hairs," "smudged wire-rimmed glasses").
 
@@ -91,6 +93,13 @@ Provide the final prompt string, starting with the instruction:
 """
 
 
+def get_chat_gemini():
+    _set_env("GOOGLE_API_KEY")
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY")
+    )
+
+
 def get_image_bytes(image_path):
     # image_format = image_path.split(".")[-1].lower()
     image = Image.open(image_path)
@@ -106,60 +115,7 @@ def get_base64_image(image_path):
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-def caption_img(model, image_path):
-    img = get_base64_image(image_path)
-    image_url = f"data:image/png;base64,{img}"
-
-    message = HumanMessage(
-        content=[
-            {"type": "text", "text": PROMPT_AMATEUR_EDIT},
-            {"type": "image_url", "image_url": {"url": image_url}},
-        ]
-    )
-    response = model.invoke([message])
-    return response.content
-
-
-def caption_image_dataset(model, image_dir):
-    if not os.path.exists(image_dir):
-        raise ValueError(f"Image directory {image_dir} does not exist")
-
-    for image in os.listdir(image_dir):
-        name, ext = os.path.splitext(image)
-        ext = ext.lower()
-
-        image_path = os.path.join(image_dir, image)
-        caption_path = os.path.join(image_dir, name + ".txt")
-
-        if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
-            print(f"Skipping {image} (unsupported format)")
-            continue
-
-        if os.path.exists(caption_path):
-            try:
-                if os.path.getsize(caption_path) > 0:
-                    print(f"Skipping {image_path} (caption exists)")
-                    continue
-            except OSError:
-                pass
-
-        print("Captioning image:", image_path)
-        start = time.perf_counter()
-
-        try:
-            caption = caption_img(model, image_path)
-        except Exception as e:
-            print(f"Unable to caption image {image_path}, {e}")
-            continue
-        finally:
-            print("Time taken: ", time.perf_counter() - start)
-
-        print("Writing caption to file: ", caption_path)
-        with open(caption_path, "w") as f:
-            f.write(caption)
-
-
-def caption_single_image(model, image_path):
+def caption_image(model, image_path):
     if not os.path.exists(image_path):
         raise ValueError(f"Image path {image_path} does not exist")
 
@@ -180,16 +136,37 @@ def caption_single_image(model, image_path):
         except OSError:
             pass
 
-    print("Captioning image: ", image_path)
     start = time.perf_counter()
     try:
-        caption = caption_img(model, image_path)
+        print("Captioning image:", image_path)
+        prompt = PROMPT_LORA.replace("{trigger_word}", "ohmyra")
+        img = get_base64_image(image_path)
+        image_b64 = f"data:image/png;base64,{img}"
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": image_b64}},
+            ]
+        )
+        response = model.invoke([message])
+        caption = response.content
     finally:
-        print("Time taken: ", time.perf_counter() - start)
+        print("Time taken:", time.perf_counter() - start)
 
-    print("Writing caption to file: ", caption_path)
+    print("Writing caption to file:", caption_path)
     with open(caption_path, "w") as f:
         f.write(caption)
+
+
+def caption_image_dataset(model, image_dir):
+    if not os.path.exists(image_dir):
+        raise ValueError(f"Image directory {image_dir} does not exist")
+
+    for file in os.listdir(image_dir):
+        try:
+            caption_image(model, os.path.join(image_dir, file))
+        except Exception as e:
+            print(f"Unable to caption image {file}: {e}")
 
 
 def main():
@@ -197,15 +174,12 @@ def main():
     parser.add_argument("path")
     args = parser.parse_args()
 
-    _set_env("GOOGLE_API_KEY")
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY")
-    )
+    model = get_chat_gemini()
 
     if os.path.isdir(args.path):
         caption_image_dataset(model, args.path)
     else:
-        caption_single_image(model, args.path)
+        caption_image(model, args.path)
 
 
 if __name__ == "__main__":
