@@ -7,25 +7,18 @@ from pathlib import Path
 from constants import BASE_DIR
 
 
-def resolve_path(p: str | Path):
-    path = Path(p).expanduser()
-    if path.is_absolute():
-        return path
-    return (BASE_DIR / path).resolve()
-
-
 def resolve_dataset_path(p: str | Path):
     path = Path(p).expanduser()
-    if path.is_absolute():
-        return path
-    return (BASE_DIR / "dataset" / path).resolve()
+    if not path.is_absolute():
+        path = (BASE_DIR / "dataset" / path).resolve()
+    return path
 
 
 def resolve_prompt_path(p: str | Path):
     path = Path(p).expanduser()
-    if path.is_absolute():
-        return path
-    return (BASE_DIR / "prompts" / path).resolve()
+    if not path.is_absolute():
+        path = (BASE_DIR / "prompts" / path).resolve()
+    return path
 
 
 def convert_to_base64(file_path, format="PNG"):

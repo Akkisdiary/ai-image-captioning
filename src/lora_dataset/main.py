@@ -38,7 +38,7 @@ def gen_file(
             print(f"Not a file {img_path}")
             return
 
-        out_path = resolve_dataset_path(img_path).with_suffix(".txt")
+        out_path = img_path.with_suffix(".txt")
 
         if (
             out_path.exists()
@@ -48,7 +48,7 @@ def gen_file(
             raise PromptExistsException(f"Prompt exists, skipping {out_path}")
 
         img_b64 = read_image(img_path)
-        prompt_str = read_file(resolve_prompt_path(prompt_path))
+        prompt_str = read_file(prompt_path)
 
         if isinstance(trigger_word, str):
             prompt_str = prompt_str.replace("{trigger_word}", trigger_word)
@@ -119,13 +119,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("data_path")
     parser.add_argument(
-        "--prompt_path",
+        "--prompt-path",
         default="CHAR_LORA.md",
         required=False,
         choices=prompt_choices,
     )
     parser.add_argument(
-        "--trigger_word",
+        "--trigger-word",
         default=None,
         required=False,
     )
