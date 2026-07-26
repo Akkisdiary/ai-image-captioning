@@ -9,7 +9,7 @@ DATASET_PATH=$2
 DATASET_NAME=$3
 OUTPUT_DIR=$4
 DEFAULT_TARGET_DIR="/app/ai-toolkit/datasets/${DATASET_NAME}"
-TARGET_DIR="${OUTPUT_DIR:-DEFAULT_TARGET_DIR}"
+TARGET_DIR="${OUTPUT_DIR:-$DEFAULT_TARGET_DIR}"
 
 if [[ -z "$REPO_ID" || -z "$DATASET_PATH" ]]; then
     echo "Error: Missing arguments."
