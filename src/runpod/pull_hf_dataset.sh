@@ -34,7 +34,7 @@ fi
 echo "Downloading dataset from $REPO_ID/$DATASET_PATH to $TARGET_DIR"
 
 mkdir -p "$TARGET_DIR"
-TEMP_DOWNLOAD_DIR="/tmp/pull_hf_dataset"
+TEMP_DOWNLOAD_DIR="$(mktemp -d)"
 
 hf download $REPO_ID \
     --local-dir "$TEMP_DOWNLOAD_DIR" \
@@ -48,14 +48,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-find "$TEMP_DOWNLOAD_DIR" -mindepth 1 -maxdepth 1 -exec sh -c 'cp -r "{}"/* "$TARGET_DIR"' \;
+mv "$TEMP_DOWNLOAD_DIR/$DATASET_PATH"/* $TARGET_DIR
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo "✅ Success: Dataset contents downloaded and flattened to '$TARGET_DIR'."
+    echo "✅ Success: Dataset contents downloaded and flattened to '${TARGET_DIR}'."
 else
     echo ""
     echo "❌ Error: Failed during the file flattening/copy process."
 fi
-
-rm -rf "$TEMP_DOWNLOAD_DIR"
