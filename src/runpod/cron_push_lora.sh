@@ -16,15 +16,22 @@ if [[ -z "$REPO_ID" || -z "$LORA_NAME" || -z $LORA_VERSION || -z $MODEL_NAME ]];
 fi
 
 nohup bash -c '
+	REPO_ID=${REPO_ID}
+	LORA_NAME=${LORA_NAME}
+	LORA_VERSION=${LORA_VERSION}
+	MODEL_NAME=${MODEL_NAME}
+
 	while true; do
 		echo "===== START $(date "+%Y-%m-%d %H:%M:%S") ====="
+	
 		if hf upload ${REPO_ID} /app/ai-toolkit/output/${LORA_NAME}/ ${LORA_NAME}/${MODEL_NAME}/${LORA_VERSION} --repo-type model; then
 			echo "STATUS: SUCCESS"
 		else 
 			echo "STATUS: FAILED (exit code $?)"
 		fi 
+
 		echo "===== END $(date "+%Y-%m-%d %H:%M:%S") ====="
-		echo
-		sleep 300
+        echo
+        sleep 300
 	done
 ' >> /cron_push_lora.log 2>&1 &
