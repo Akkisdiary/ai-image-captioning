@@ -34,7 +34,7 @@ fi
 echo "Downloading dataset from $REPO_ID/$DATASET_PATH to $TARGET_DIR"
 
 mkdir -p "$TARGET_DIR"
-TEMP_DOWNLOAD_DIR=$(mktemp -d)
+TEMP_DOWNLOAD_DIR="/tmp/pull_hf_dataset"
 
 hf download $REPO_ID \
     --local-dir "$TEMP_DOWNLOAD_DIR" \
