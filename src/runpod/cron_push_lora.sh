@@ -7,7 +7,7 @@ LORA_NAME=$2
 LORA_VERSION=$3
 MODEL_NAME=$4
 
-if [[ -z "$REPO_ID" || -z "$LORA_NAME" || $LORA_VERSION || $MODEL_NAME ]]; then
+if [[ -z "$REPO_ID" || -z "$LORA_NAME" || -z $LORA_VERSION || -z $MODEL_NAME ]]; then
     echo "Error: Missing arguments."
     echo "Usage:"
     echo ""
